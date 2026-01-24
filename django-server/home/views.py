@@ -1,3 +1,4 @@
+import requests
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from django.db import connection, IntegrityError
 from django.contrib.auth import authenticate
 from rest_framework import serializers, status
 from rest_framework_simplejwt.tokens import RefreshToken
+from bs4 import BeautifulSoup
 
 
 class RegisterView(APIView):
@@ -19,7 +21,6 @@ class RegisterView(APIView):
             "id": user.id,
             "tokens": {'refresh':str(token), 'access':(str(token.access_token))}
         }, status=status.HTTP_201_CREATED)
-
 
 class LoginView(APIView):
     def post(self, request):
@@ -42,10 +43,13 @@ class LogoutView(APIView):
         except Exception as e:
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
-
+class SearchView(APIView):
+    def get(self, request):
+        pass
 
 """
 {
+
     "username": "ajl",
     "email": "ajl@penis.com",
     "password": "ajl"
