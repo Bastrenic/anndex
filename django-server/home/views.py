@@ -45,7 +45,17 @@ class LogoutView(APIView):
 
 class SearchView(APIView):
     def get(self, request):
-        pass
+        response = requests.get("https://www.bing.com/search?q=ps5")
+        html_content = response.content
+        soup = BeautifulSoup(html_content, 'html.parser')
+        heading_object = soup.find_all('a')
+
+        # Iterate through the object 
+        # and print it as a string.
+        for info in heading_object:
+            print(info.getText())
+            print("------")
+        return Response({"message": soup.title.text})
 
 """
 {
