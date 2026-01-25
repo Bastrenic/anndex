@@ -1,0 +1,67 @@
+JB HI FI
+
+('PS5 PlayStation 5 Pro Console', '1199')
+('PS5 PlayStation 5 Slim Console', '829')
+('PS5 PlayStation 5 Slim Digital Console (825GB)', '749')
+('PS5 PlayStation Vertical Stand for PS5 and PS5 Pro', '49')
+('PS5 PlayStation 5 DualSense Wireless Controller Midnight Black', '119')
+('PS5 PlayStation 5 DualSense Wireless Controller', '119')
+('PS5 PlayStation 5 DualSense Wireless Controller Chroma Teal', '124')
+('PS5 PlayStation Portal Remote Player', '329')
+('MARVEL’S SPIDER-MAN 2', '109')
+('Horizon Forbidden West', '89')
+
+SONY
+
+('PlayStation 5 Pro Console', '$1,199.95 AUD')
+('PlayStation 5 Console (Slim)', '$829.95 AUD')
+('PlayStation 5 Digital Edition Console (Slim)', '$749.95 AUD')
+('PlayStation 5 Digital Edition and DualSense controller bundle', '$759.90 AUD')
+('PlayStation 5 Digital Edition Console (Slim) - Fortnite Cobalt Star Bundle', '$679.95 AUD')
+('PlayStation 5 Console (Slim) - Two DualSense Wireless Controllers Bundle', '$889.95 AUD')
+('PlayStation 5 Digital Edition Console (Slim) - Two DualSense Wireless Controllers Bundle', '$769.95 AUD')
+('PlayStation 5 Console (Slim) - Fortnite Cobalt Star Bundle', '$799.95 AUD')
+  
+
+EB GAMES
+
+('Sony - INZONE H5 Wireless Gaming Headset (For PC/PS5) - Black', '$299.95')
+('Sony - INZONE H9II Wireless Noise Cancelling Headset (For PC/PS5) - Black', '$499.95')
+('Sony - INZONE H3 Wired Headset (For PC/PS5) - Black', '$149.95')
+('Sony - INZONE H9 Wireless Noise Cancelling Gaming Headset (For PC/PS5) - White', '$449.95')
+('Sony - INZONE H9II Wireless Noise Cancelling Headset (For PC/PS5) - White', '$499.95')
+('Sony - INZONE H3 Wired Gaming Headset (For PC/PS5) - White', '$149.95')
+('Sony - INZONE H5 Wireless Gaming Headset (For PC/PS5) - White', '$299.95')
+('Sony - INZONE H9 Wireless Noise Cancelling Gaming Headset (For PC/PS5) - Black', '$449.95')
+('4Gamers PS5 Twin DualSense Wireless Controller Charging Dock - Black', '$34.95')
+('Call of Duty: Black Ops 7', '$109.95')
+
+BIG W
+
+('Disc Drive For PS5 Digital Edition or Pro Console', '$124$124')
+('PlayStation Portal Remote Player For PS5 Console', '$329$329')
+('PS5 Cooling Fans, Playstation 5 Cooling Fan Compatible with PS5 Discs Edition and Digital Edition', '$101.95$101.95')
+('PlayStation 5 Disc Console', '$829$829')
+('PlayStation 5 Pro Console', '$1199$1199')
+('PlayStation 5 Digital Edition – 825GB', '$749$749')
+('PlayStation 5 Console 1TB - Fortnite Flowering Chaos Bundle', '$829$829')
+('PlayStation 5 Digital Edition 825GB – Fortnite Flowering Chaos Bundle', '$749$749')
+('PlayStation 5 Console Digital Edition Slim', '$745$745')
+
+
+
+THE GOOD GUYS
+
+('PlayStation 5 Console Slim', '$829')
+('PlayStation 5 Console Slim Digital Edition', '$749')
+('PlayStation 5 Console Fortnite Flowering Chaos Bundle', '$829')
+('PlayStation 5 Console Digital Fortnite Flowering Chaos Bundle', '$749')
+('PlayStation 5 Portal Remote Player', '$329+ Delivery from $10')
+('PlayStation 5 Portal Remote Player (Midnight Black)', '$329+ Delivery from $6')
+('PlayStation 5 Console Digital EA Sports FC 26 Bundle', '$749')
+('PlayStation 5 Console EA Sports FC 26 Bundle', '$829')
+
+
+COSTCO
+
+('PS5 PlayStation 5 Slim Console\n      5.0 out of 5 stars, average rating value. Read 16 Reviews.\n      Same page link.5.0(16)Item #181737', '$799.99Price includes delivery. Item may be available in your local warehouse, prices may vary. Qty Add to cart Buy Now! Buying Guide')

@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
 from fuzzywuzzy import process
+import sys
 
 
 """
@@ -17,11 +18,12 @@ with sync_playwright() as p:
     browser = p.chromium.connect_over_cdp(endpoint_url)
     context = browser.contexts[0]
     page = context.pages[0]
-    page.goto("https://www.ebgames.com.au/featured/playstation-5")
-    #page.screenshot(path="screenshot2.jpg", full_page=True)
+    page.goto("https://www.costco.com.au/Computers/Gaming/Gaming-Consoles/PS5-PlayStation-5-Slim-Console/p/181737")
+    page.wait_for_timeout(500)
+    page.screenshot(path="screenshot2.jpg", full_page=True)
     html_content = page.content()
 
-with open("content3.html" ,"w") as f:
+with open("content7.html" ,"w") as f:
     f.write(html_content)
 """
 
@@ -29,7 +31,7 @@ with open("content3.html" ,"w") as f:
 """
 JB HI FI
 html_page = "content1.html"
-item_attrs = {"class": re.compile(r"(card|tile)", re.I)}
+item_attrs = {"class": re.compile(r"card", re.I)}
 title_attrs = {"data-testid": re.compile(r"title", re.I)}
 price_attrs = {"data-testid": re.compile(r"price", re.I)}
 
@@ -46,72 +48,120 @@ item_attrs = {"class": re.compile(r"tile", re.I)}
 title_attrs = {"class": re.compile(r"name", re.I)}
 price_attrs = {"class": re.compile(r"price", re.I)}
 
+BIG W
+
+html_page = "content4.html"
+item_attrs = {"class": re.compile(r"tile", re.I)}
+title_attrs = {"class": re.compile(r"name", re.I)}
+price_attrs = {"class": re.compile(r"price", re.I)}
+
+
+THE GOOD GUYS
+
+html_page = "content5.html"
+item_attrs = {"data-testid": re.compile(r"card", re.I)}
+title_attrs = {"class": re.compile(r"title", re.I)}
+price_attrs = {"class": re.compile(r"price", re.I)}
+
+
+COSTCO
+
+html_page = "content7.html"
+item_attrs = {"data-testid": re.compile(r"card", re.I)}
+title_attrs = {"class": re.compile(r"product-name", re.I)}
+price_attrs = {"class": re.compile(r"product-price", re.I)}
 """
 
+# write a function to parse product name and product price
+# product name - cut as soon as '\n' is reached?
+# product price - start at the first number, and keep going until the next character is no longer a decimal or number or the string has ended
 
-html_page = "content3.html"
-item_attrs = {"class": re.compile(r"(card|tile)", re.I)}
-title_attrs = {"data-testid": re.compile(r"title", re.I)}
-price_attrs = {"data-testid": re.compile(r"price", re.I)}
+html_page = "content7.html"
+name = "COSTCO"
+possible_item_tags = [
+    {"data-testid": re.compile(r"card", re.I)},
+    {"data-testid": re.compile(r"tile", re.I)},
+    {"class": re.compile(r"card", re.I)},
+    {"class": re.compile(r"tile", re.I)}
+]
+possible_title_tags = [
+    {"data-testid": re.compile(r"(?=.*product)(?=.*title)", re.I)},
+    {"data-testid": re.compile(r"(?=.*product)(?=.*name)", re.I)},
+    {"data-testid": re.compile(r"title", re.I)},
+    {"data-testid": re.compile(r"name", re.I)},
+    {"class": re.compile(r"(?=.*product)(?=.*title)", re.I)},
+    {"class": re.compile(r"(?=.*product)(?=.*name)", re.I)},
+    {"class": re.compile(r"title", re.I)},
+    {"class": re.compile(r"name", re.I)}
+]
+
+possible_price_tags = [
+    {"data-testid": re.compile(r"(?=.*product)(?=.*price)", re.I)},
+    {"data-testid": re.compile(r"(?=.*ticket)(?=.*price)", re.I)},
+    {"data-testid": re.compile(r"price", re.I)},
+    {"class": re.compile(r"(?=.*ticket)(?=.*price)", re.I)},
+    {"class": re.compile(r"(?=.*product)(?=.*price)", re.I)},
+    {"class": re.compile(r"price", re.I)}
+]
+
 
 query = "ps5"
-
-
+matches = []
 with open(html_page, "r") as f:
     html_content = f.read()
 soup = BeautifulSoup(html_content, 'html.parser')
-items = soup.find_all("div", attrs=item_attrs)
 
-res = set()
-for i in items:
-    title = i.find(attrs=title_attrs)
-    price = i.find(attrs=price_attrs)
+for item_attr in possible_item_tags:
+    items = soup.find_all(["div", "li"], attrs=item_attr)
+    if items:
+        break
+
+titles = {}
+if not items:
+    # on single item page
+    for title_attr in possible_title_tags:
+        title = soup.find(attrs=title_attr)
+        if title:
+            sys.exit()
+            break
+    
+    for price_attr in possible_price_tags:
+        price = soup.find(attrs=price_attr)
+        if price: 
+            break
+
     if title and price:
-        res.add((title.text.strip(), price.text.strip()))
+        title = title.text.strip()
+        price = price.text.strip()
 
-titles = []
-for title, price in res:
-    titles.append(title)
+        titles[title] = price
+    matches.append((title, price))
 
-matches = process.extract(query, titles)
-print(matches)
+else:
+    for i in items:
+        # how to skip duplicates?
+        for title_attr in possible_title_tags:
+            title = i.find(attrs=title_attr)
+            if title:
+                break
+        
+        for price_attr in possible_price_tags:
+            price = i.find(attrs=price_attr)
+            if price: 
+                break
+
+        if title and price:
+            title_children = title.find_all(recursive=False)
+            if title_children:
+                title = title_children[0]
+            titles[title.text.strip()] = price.text.strip()
+
+    matches = process.extract(query, list(titles.keys()), limit=10)
 
 
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-# https://html.duckduckgo.com/html/?q=ps5
-"""
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
-}
-response = requests.get("https://httpbin.org/user-agent", headers=headers)
-
-with open("content.html", "w") as f:
-    f.write(response.text)
-"""
-
-"""
-www.jbhifi.com.au/pages/playstation-5
-store.sony.com.au/playstation-5-console
-www.bigw.com.au/gaming/ps5/ps5-consoles/c/64121178100
-www.thegoodguys.com.au/gaming/gaming-hardware/playstation-consoles
-www.ebgames.com.au/featured/playstation-5
-www.harveynorman.com.au/games-hub/game-consoles/playstation-consoles
-www.telstra.com.au/entertainment/gaming/playstation-consoles
-www.target.com.au/p/playstation-5-console-digital-edition-slim/69871610
-www.costco.com.au/Computers/Gaming/Gaming-Consoles/PS5-PlayStation-5-Slim-Console/p/181737
-
-"""
+with open("matches.txt", "a") as f:
+    f.write(f"{name}\n\n")
+    for m in matches:
+        title = m[0]
+        f.write(f"{title, titles[title]}\n")
+    f.write('\n')
