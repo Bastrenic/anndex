@@ -1,16 +1,22 @@
 import requests
 import re
 import difflib
+import sys
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError
+from sentence_transformers import SentenceTransformer
 from seleniumbase import sb_cdp
 from fuzzywuzzy import process
-import sys
 
-# avoid duplicate websites
 # when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99')
 # make it faster
+# write function for parsing title and parsing price
+# get the image
 
+
+def group_results():
+    pass
+    
 
 
 def scrape_page(query, html_content, link):
@@ -18,7 +24,8 @@ def scrape_page(query, html_content, link):
         {"data-testid": re.compile(r"card", re.I)},
         {"data-testid": re.compile(r"tile", re.I)},
         {"class": re.compile(r"card", re.I)},
-        {"class": re.compile(r"tile", re.I)}
+        {"class": re.compile(r"tile", re.I)},
+        {"class": re.compile(r"(?=.*product)(?=.*summary)", re.I)},
     ]
     possible_title_tags = [
         {"data-testid": re.compile(r"(?=.*product)(?=.*title)", re.I)},
@@ -28,7 +35,7 @@ def scrape_page(query, html_content, link):
         {"class": re.compile(r"(?=.*product)(?=.*title)", re.I)},
         {"class": re.compile(r"(?=.*product)(?=.*name)", re.I)},
         {"class": re.compile(r"title", re.I)},
-        {"class": re.compile(r"name", re.I)}
+        {"class": re.compile(r"name", re.I)},
     ]
 
     possible_price_tags = [
@@ -37,7 +44,7 @@ def scrape_page(query, html_content, link):
         {"data-testid": re.compile(r"price", re.I)},
         {"class": re.compile(r"(?=.*ticket)(?=.*price)", re.I)},
         {"class": re.compile(r"(?=.*product)(?=.*price)", re.I)},
-        {"class": re.compile(r"price", re.I)}
+        {"class": re.compile(r"price", re.I)},
     ]
 
 
@@ -48,53 +55,35 @@ def scrape_page(query, html_content, link):
         name = name.text
 
     for item_attr in possible_item_tags:
-        items = soup.find_all(["div", "li"], attrs=item_attr)
-        if items:
-            break
+        items = soup.find_all(["div", "li"], attrs=item_attr, recursive=False)
+
 
     titles = {}
-    if not items:
-        # on single item page
+   
+    for i in items:
+        # how to skip duplicates?
         for title_attr in possible_title_tags:
-            title = soup.find(attrs=title_attr)
+            title = i.find(attrs=title_attr)
             if title:
                 break
         
         for price_attr in possible_price_tags:
-            price = soup.find(attrs=price_attr)
+            price = i.find(attrs=price_attr)
             if price: 
                 break
 
         if title and price:
-            title = title.text.strip()
-            price = price.text.strip()
+            title_children = title.find_all(recursive=False)
+            if title_children:
+                title = title_children[0]
+            titles[title.text.strip()] = price.text.strip()
 
-            titles[title] = price
-            matches.append((title, price))
+    matches = process.extract(query, list(titles.keys()), limit=1)
 
-    else:
-        for i in items:
-            # how to skip duplicates?
-            for title_attr in possible_title_tags:
-                title = i.find(attrs=title_attr)
-                if title:
-                    break
-            
-            for price_attr in possible_price_tags:
-                price = i.find(attrs=price_attr)
-                if price: 
-                    break
+    if not titles:
+        return
 
-            if title and price:
-                title_children = title.find_all(recursive=False)
-                if title_children:
-                    title = title_children[0]
-                titles[title.text.strip()] = price.text.strip()
-
-        matches = process.extract(query, list(titles.keys()), limit=10)
-
-
-    with open("matches_main.txt", "a") as f:
+    with open("matches.txt", "a") as f:
         f.write(f"{name}\n")
         f.write(f"{link}\n\n")
         for m in matches:
@@ -121,6 +110,7 @@ def scrape_search(query):
 
         for l in links:            
             l = "https://" + l.text.strip()
+            print(l)
             m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
             domain = None
             if m:
@@ -142,7 +132,7 @@ def scrape_search(query):
 
 
 def main():
-    scrape_search("ps5")
+    scrape_search("playstation 5 pro")
 
 if __name__ == "__main__":
     main()
