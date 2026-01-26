@@ -36,7 +36,7 @@ def scrape_page(query, html_content, link):
 
 
     matches = []
-    soup = BeautifulSoup(html_content, 'html.parser')
+    soup = BeautifulSoup(html_content, 'lxml')
     name = soup.find("title")
     if name:
         name = name.text
@@ -48,7 +48,7 @@ def scrape_page(query, html_content, link):
 
     titles = {}
     if not items:
-        # on single item page
+        # potentially on single item page
         for title_attr in possible_title_tags:
             title = soup.find(attrs=title_attr)
             if title:
@@ -88,7 +88,7 @@ def scrape_page(query, html_content, link):
         matches = process.extract(query, list(titles.keys()), limit=10)
 
 
-    with open("matches.txt", "a") as f:
+    with open("matches_test.txt", "a") as f:
         f.write(f"{name}\n")
         f.write(f"{link}\n\n")
         for m in matches:
@@ -100,29 +100,32 @@ def scrape_page(query, html_content, link):
 def scrape_search(query):
     sb = sb_cdp.Chrome(locale="en")
     endpoint_url = sb.get_endpoint_url()
-    counter = 0
+    
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(endpoint_url)
         context = browser.contexts[0]
         page = context.pages[0]
         try:
-            page.goto("https://www.harveynorman.com.au/games-hub/game-consoles/playstation-consoles")
-            page.wait_for_timeout(600)
+            page.goto("https://store.sony.com.au/playstation-5-console", wait_until="domcontentloaded", timeout=5000)
+            page.screenshot(path="screenshot.jpg",full_page=True)
+            #page.wait_for_timeout(600)
             html_content = page.content()
-            #scrape_page(query, html_content, l)
+            with open("test.html", 'w') as f:
+                f.write(html_content)
+            #print(html_content)
+            scrape_page(query, html_content, "test")
         except TimeoutError:
             print("oops")
             sys.exit()
     
 
-        soup = BeautifulSoup(html_content, 'html.parser')
-    
-    print(soup.prettify())
-    
+        #soup = BeautifulSoup(html_content, 'lxml')
+
+
 
 
 def main():
-    scrape_search("ps5")
+    scrape_search("spider-man")
 
 if __name__ == "__main__":
     main()

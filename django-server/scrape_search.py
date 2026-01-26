@@ -8,7 +8,8 @@ from fuzzywuzzy import process
 import sys
 
 # avoid duplicate websites
-# try amazon
+# when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99')
+# make it faster
 
 
 
@@ -41,7 +42,7 @@ def scrape_page(query, html_content, link):
 
 
     matches = []
-    soup = BeautifulSoup(html_content, 'html.parser')
+    soup = BeautifulSoup(html_content, 'lxml')
     name = soup.find("title")
     if name:
         name = name.text
@@ -93,7 +94,7 @@ def scrape_page(query, html_content, link):
         matches = process.extract(query, list(titles.keys()), limit=10)
 
 
-    with open("matches.txt", "a") as f:
+    with open("matches_main.txt", "a") as f:
         f.write(f"{name}\n")
         f.write(f"{link}\n\n")
         for m in matches:
@@ -105,30 +106,39 @@ def scrape_page(query, html_content, link):
 def scrape_search(query):
     sb = sb_cdp.Chrome(locale="en")
     endpoint_url = sb.get_endpoint_url()
-    counter = 0
+    domains = set()
+
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(endpoint_url)
         context = browser.contexts[0]
         page = context.pages[0]
-        page.goto(f"https://html.duckduckgo.com/html/?q={query}")
+        page.goto(f"https://html.duckduckgo.com/html/?q={query}", wait_until="domcontentloaded")
         html_content = page.content()
 
-        soup = BeautifulSoup(html_content, 'html.parser')
+        soup = BeautifulSoup(html_content, 'lxml')
     
         links = soup.find_all('a', attrs={'class', 'result__url'})
 
-        for l in links:
+        for l in links:            
             l = "https://" + l.text.strip()
-            print(l)
+            m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
+            domain = None
+            if m:
+                domain = m.group(1)
+            if domain in domains:
+                continue
+            domains.add(domain)
+            
             try:
-                page.goto(l)
-                page.wait_for_timeout(600)
+                page.goto(l, wait_until="domcontentloaded", timeout=5000)
+                page.wait_for_function("""
+                    () => document.body.innerText.length > 1000
+                """, timeout=5000)
                 html_content = page.content()
                 scrape_page(query, html_content, l)
             except Exception as e:
                 print(f"Error: {e}")
                 continue
-            counter += 1
 
 
 def main():
