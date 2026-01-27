@@ -103,9 +103,9 @@ def scrape_page(query, html_content, link):
 
 async def query_page(context, query, link):
     m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', link)
-    domain = None
     if m:
         domain = m.group(1)
+
     if domain in domains:
         return
     domains.add(domain)
@@ -117,9 +117,11 @@ async def query_page(context, query, link):
             () => document.body.innerText.length > 1000
         """, timeout=5000)
         html_content = await page.content()
-        scrape_page(query, html_content, link)
+        await asyncio.to_thread(scrape_page, query, html_content, link)
     except Exception as e:
         print(f"Error: {e}")
+    finally:
+        await page.close()
 
 
 
@@ -139,27 +141,6 @@ async def main(query):
     
         links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class', 'result__url'})]
         await asyncio.gather(*[query_page(await browser.new_context(), query, link) for link in links])
-
-        # for l in links:            
-        #     l = "https://" + l.text.strip()
-        #     m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
-        #     domain = None
-        #     if m:
-        #         domain = m.group(1)
-        #     if domain in domains:
-        #         continue
-        #     domains.add(domain)
-            
-        #     try:
-        #         page.goto(l, wait_until="domcontentloaded", timeout=5000)
-        #         page.wait_for_function("""
-        #             () => document.body.innerText.length > 1000
-        #         """, timeout=5000)
-        #         html_content = page.content()
-        #         scrape_page(query, html_content, l)
-        #     except Exception as e:
-        #         print(f"Error: {e}")
-        #         continue
 
 
 
