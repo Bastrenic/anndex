@@ -1,13 +1,14 @@
-import requests
+#import requests
 import re
-import difflib
+#import difflib
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError
 from seleniumbase import sb_cdp
-from fuzzywuzzy import process
-from sentence_transformers import SentenceTransformer, util
+from fuzzywuzzy import process, fuzz
+#from sentence_transformers import SentenceTransformer, util
 import sys
 
+"""
 
 def test():
     model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -48,16 +49,24 @@ def test():
     query_embeddings = model.encode("ps5")
     results = util.semantic_search(query_embeddings, sentence_embeddings, top_k=1)
     print(results)
-    
+"""
+
+item_regex = re.compile(r'(card|tile|product)', re.I)
+title_regex = re.compile(r'(title|name)', re.I)
+price_regex = re.compile(r'price', re.I)
+
+
 
 
 def scrape_page(query, html_content, link):
     possible_item_tags = [
-        #{"data-testid": re.compile(r"card", re.I)},
-        #{"data-testid": re.compile(r"tile", re.I)},
-        #{"class": re.compile(r"card", re.I)},
-        #{"class": re.compile(r"tile", re.I)},
-        {"class": re.compile(r"(?=.*product)(?=.*summary)", re.I)}
+        {"data-testid": re.compile(r"card", re.I)},
+        {"data-testid": re.compile(r"tile", re.I)},
+        {"class": re.compile(r"card", re.I)},
+        {"class": re.compile(r"tile", re.I)},
+        {"class": re.compile(r"(?=.*product)(?=.*summary)", re.I)},
+        {"class": re.compile(r"(?=.*product)", re.I)}
+        #{"class": re.compile(r"product-info-main", re.I)}
     ]
     possible_title_tags = [
         {"data-testid": re.compile(r"(?=.*product)(?=.*title)", re.I)},
@@ -71,33 +80,30 @@ def scrape_page(query, html_content, link):
     ]
 
     possible_price_tags = [
-        {"data-testid": re.compile(r"(?=.*product)(?=.*price)", re.I)},
-        {"data-testid": re.compile(r"(?=.*ticket)(?=.*price)", re.I)},
         {"data-testid": re.compile(r"price", re.I)},
-        {"class": re.compile(r"(?=.*ticket)(?=.*price)", re.I)},
-        {"class": re.compile(r"(?=.*product)(?=.*price)", re.I)},
         {"class": re.compile(r"price", re.I)}
     ]
 
 
     matches = []
+    items = []
+    titles = {}
     soup = BeautifulSoup(html_content, 'lxml')
     name = soup.find("title")
     if name:
         name = name.text
 
+    
     for item_attr in possible_item_tags:
-        items = soup.find_all(["div", "li"], attrs=item_attr)
+       results = soup.find_all(["div", "li"], attrs=item_attr)
+       items.extend(results)
+    
 
-    titles = {}
-
+    #items = soup.select("div, li")
+    #print(len(items))
+    #sys.exit()
 
     for i in items:
-
-        with open('test.txt', 'a') as f:
-            f.write(i.prettify())
-            f.write('\n\n')
-        # how to skip duplicates?
         for title_attr in possible_title_tags:
             title = i.find(attrs=title_attr)
             if title:
@@ -114,9 +120,10 @@ def scrape_page(query, html_content, link):
                 title = title_children[0]
             titles[title.text.strip()] = price.text.strip()
 
-    print(titles)
-    
-    matches = process.extract(query, list(titles.keys()), limit=1)
+        if len(titles) > 20:
+            break
+
+    match = process.extractOne(query, titles.keys(), scorer=fuzz.token_set_ratio)
 
 
 
@@ -127,7 +134,7 @@ def scrape_page(query, html_content, link):
             title, score = m[0], m[1]
             f.write(f"{title, titles[title], score}\n")
         f.write('\n')
-
+    
 
 def scrape_search(query):
     sb = sb_cdp.Chrome(locale="en")
@@ -138,17 +145,15 @@ def scrape_search(query):
         context = browser.contexts[0]
         page = context.pages[0]
         try:
-            page.goto("https://www.bigw.com.au/product/playstation-5-pro-console/p/104141", wait_until="domcontentloaded", timeout=5000)      
+            page.goto("https://www.amazon.com.au/BEAUTY-OF-JOSEON-Dynasty-Cream/dp/B08WJQ3XJD?th=1", wait_until="domcontentloaded", timeout=5000)      
             page.wait_for_function("""
                 () => document.body.innerText.length > 1000
             """, timeout=5000)
             #page.wait_for_timeout(600)
             html_content = page.content()
-            with open("test.html", 'w') as f:
-                f.write(html_content)
-            #page.screenshot(path="screenshot.jpg", full_page=True)
+            page.screenshot(path="screenshot.jpg", full_page=True)
             #print(html_content)
-            scrape_page(query, html_content, "test")
+            scrape_page(query, html_content, "dynasty cream")
         except TimeoutError:
             print("oops")
             sys.exit()
@@ -160,7 +165,14 @@ def scrape_search(query):
 
 
 def main():
-    scrape_search("ps5")
+    #requests.get('https://www.beautyamora.com.au/dynasty-cream-tube-100ml81841.html')
+    
+    #scrape_search("dynasty cream 100ml")
+
+    with open('test.html', 'r') as f:
+        html_content = f.read()
+
+    scrape_page('test', html_content, 'hello')
 
 if __name__ == "__main__":
     main()

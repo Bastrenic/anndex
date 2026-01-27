@@ -6,12 +6,13 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError
 from sentence_transformers import SentenceTransformer
 from seleniumbase import sb_cdp
-from fuzzywuzzy import process
+from fuzzywuzzy import process, fuzz
 
-# when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99')
+# when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99') --> consider specialised parsing for ebay and amazon?
 # make it faster
 # write function for parsing title and parsing price
 # get the image
+# discard results if score is too low
 
 
 def group_results():
@@ -25,8 +26,9 @@ def scrape_page(query, html_content, link):
         {"data-testid": re.compile(r"tile", re.I)},
         {"class": re.compile(r"card", re.I)},
         {"class": re.compile(r"tile", re.I)},
-        {"class": re.compile(r"(?=.*product)(?=.*summary)", re.I)},
+        {"class": re.compile(r"(?=.*product)", re.I)},
     ]
+
     possible_title_tags = [
         {"data-testid": re.compile(r"(?=.*product)(?=.*title)", re.I)},
         {"data-testid": re.compile(r"(?=.*product)(?=.*name)", re.I)},
@@ -49,13 +51,15 @@ def scrape_page(query, html_content, link):
 
 
     matches = []
+    items = []
     soup = BeautifulSoup(html_content, 'lxml')
     name = soup.find("title")
     if name:
         name = name.text
 
     for item_attr in possible_item_tags:
-        items = soup.find_all(["div", "li"], attrs=item_attr, recursive=False)
+        items.extend(soup.find_all(["div", "li"], attrs=item_attr))
+
 
 
     titles = {}
@@ -77,18 +81,21 @@ def scrape_page(query, html_content, link):
             if title_children:
                 title = title_children[0]
             titles[title.text.strip()] = price.text.strip()
+        
+        if len(titles) > 20:
+            break
 
-    matches = process.extract(query, list(titles.keys()), limit=1)
+    match = process.extractOne(query, titles.keys(), scorer=fuzz.token_set_ratio)
 
     if not titles:
         return
 
+    title, score = match
+
     with open("matches.txt", "a") as f:
         f.write(f"{name}\n")
         f.write(f"{link}\n\n")
-        for m in matches:
-            title = m[0]
-            f.write(f"{title, titles[title]}\n")
+        f.write(f"{title, titles[title]}\n")
         f.write('\n')
 
 
@@ -110,7 +117,6 @@ def scrape_search(query):
 
         for l in links:            
             l = "https://" + l.text.strip()
-            print(l)
             m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
             domain = None
             if m:
@@ -132,10 +138,8 @@ def scrape_search(query):
 
 
 def main():
-    scrape_search("playstation 5 pro")
+    scrape_search("dynasty cream 100ml")
 
 if __name__ == "__main__":
     main()
     
-
-    #page.wait_for_timeout(500)
