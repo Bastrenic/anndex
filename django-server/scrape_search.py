@@ -2,10 +2,13 @@ import requests
 import re
 import difflib
 import sys
+import asyncio
+import concurrent.futures
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError
+from itertools import repeat
+from playwright.async_api import async_playwright, TimeoutError
 from sentence_transformers import SentenceTransformer
-from seleniumbase import sb_cdp
+from seleniumbase import cdp_driver
 from fuzzywuzzy import process, fuzz
 
 # when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99') --> consider specialised parsing for ebay and amazon?
@@ -19,6 +22,7 @@ def group_results():
     pass
     
 
+domains = set()
 
 def scrape_page(query, html_content, link):
     possible_item_tags = [
@@ -60,8 +64,6 @@ def scrape_page(query, html_content, link):
     for item_attr in possible_item_tags:
         items.extend(soup.find_all(["div", "li"], attrs=item_attr))
 
-
-
     titles = {}
    
     for i in items:
@@ -99,47 +101,69 @@ def scrape_page(query, html_content, link):
         f.write('\n')
 
 
-def scrape_search(query):
-    sb = sb_cdp.Chrome(locale="en")
-    endpoint_url = sb.get_endpoint_url()
-    domains = set()
+async def query_page(context, query, link):
+    m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', link)
+    domain = None
+    if m:
+        domain = m.group(1)
+    if domain in domains:
+        return
+    domains.add(domain)
 
-    with sync_playwright() as p:
-        browser = p.chromium.connect_over_cdp(endpoint_url)
+    page = await context.new_page()
+    try:
+        await page.goto(link, wait_until="domcontentloaded", timeout=5000)
+        await page.wait_for_function("""
+            () => document.body.innerText.length > 1000
+        """, timeout=5000)
+        html_content = await page.content()
+        scrape_page(query, html_content, link)
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+
+
+async def main(query):
+    driver = await cdp_driver.start_async()
+    endpoint_url = driver.get_endpoint_url()
+
+    async with async_playwright() as p:
+        browser = await p.chromium.connect_over_cdp(endpoint_url)
         context = browser.contexts[0]
         page = context.pages[0]
-        page.goto(f"https://html.duckduckgo.com/html/?q={query}", wait_until="domcontentloaded")
-        html_content = page.content()
+        await page.goto(f"https://html.duckduckgo.com/html/?q={query}", wait_until="domcontentloaded")
+        html_content = await page.content()
 
         soup = BeautifulSoup(html_content, 'lxml')
     
-        links = soup.find_all('a', attrs={'class', 'result__url'})
+        links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class', 'result__url'})]
+        await asyncio.gather(*[query_page(await browser.new_context(), query, link) for link in links])
 
-        for l in links:            
-            l = "https://" + l.text.strip()
-            m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
-            domain = None
-            if m:
-                domain = m.group(1)
-            if domain in domains:
-                continue
-            domains.add(domain)
+        # for l in links:            
+        #     l = "https://" + l.text.strip()
+        #     m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', l)
+        #     domain = None
+        #     if m:
+        #         domain = m.group(1)
+        #     if domain in domains:
+        #         continue
+        #     domains.add(domain)
             
-            try:
-                page.goto(l, wait_until="domcontentloaded", timeout=5000)
-                page.wait_for_function("""
-                    () => document.body.innerText.length > 1000
-                """, timeout=5000)
-                html_content = page.content()
-                scrape_page(query, html_content, l)
-            except Exception as e:
-                print(f"Error: {e}")
-                continue
+        #     try:
+        #         page.goto(l, wait_until="domcontentloaded", timeout=5000)
+        #         page.wait_for_function("""
+        #             () => document.body.innerText.length > 1000
+        #         """, timeout=5000)
+        #         html_content = page.content()
+        #         scrape_page(query, html_content, l)
+        #     except Exception as e:
+        #         print(f"Error: {e}")
+        #         continue
 
 
-def main():
-    scrape_search("dynasty cream 100ml")
 
 if __name__ == "__main__":
-    main()
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(main('ps5'))
     
