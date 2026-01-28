@@ -1,6 +1,7 @@
 import requests
 from django.shortcuts import render
-from rest_framework.views import APIView
+#from rest_framework.views import APIView
+from adrf.views import APIView
 from rest_framework.response import Response
 from .serializers import RegisterSerializer, LoginSerializer
 from .models import User
@@ -9,6 +10,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers, status
 from rest_framework_simplejwt.tokens import RefreshToken
 from bs4 import BeautifulSoup
+from .scrape_search import search_results
 
 
 class RegisterView(APIView):
@@ -44,18 +46,10 @@ class LogoutView(APIView):
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 class SearchView(APIView):
-    def get(self, request):
-        response = requests.get("https://www.bing.com/search?q=ps5")
-        html_content = response.content
-        soup = BeautifulSoup(html_content, 'html.parser')
-        heading_object = soup.find_all('a')
-
-        # Iterate through the object 
-        # and print it as a string.
-        for info in heading_object:
-            print(info.getText())
-            print("------")
-        return Response({"message": soup.title.text})
+    async def get(self, request):
+        query = request.query_params.get('q')
+        res = await search_results(query)
+        return Response({"query": res})
 
 """
 {

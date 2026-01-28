@@ -151,9 +151,11 @@ def scrape_search(query):
             """, timeout=5000)
             #page.wait_for_timeout(600)
             html_content = page.content()
-            page.screenshot(path="screenshot.jpg", full_page=True)
+            with open('test.html', 'w') as f:
+                f.write(html_content)
+            #page.screenshot(path="screenshot.jpg", full_page=True)
             #print(html_content)
-            scrape_page(query, html_content, "dynasty cream")
+            #scrape_page(query, html_content, "dynasty cream")
         except TimeoutError:
             print("oops")
             sys.exit()
@@ -167,12 +169,12 @@ def scrape_search(query):
 def main():
     #requests.get('https://www.beautyamora.com.au/dynasty-cream-tube-100ml81841.html')
     
-    #scrape_search("dynasty cream 100ml")
+    scrape_search("dynasty cream 100ml")
 
-    with open('test.html', 'r') as f:
-        html_content = f.read()
+    #with open('test.html', 'r') as f:
+    #    html_content = f.read()
 
-    scrape_page('test', html_content, 'hello')
+    #scrape_page('test', html_content, 'hello')
 
 if __name__ == "__main__":
     main()

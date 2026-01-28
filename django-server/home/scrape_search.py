@@ -11,7 +11,6 @@ from sentence_transformers import SentenceTransformer
 from seleniumbase import cdp_driver
 from fuzzywuzzy import process, fuzz
 
-# consider specialised parsing for ebay and amazon?
 # get the image
 # discard results if score is too low
 
@@ -48,14 +47,8 @@ name_to_parse_function = {'amazon': parse_amazon_page}
 
 def scrape_page(query, html_content, link, domain):
     # check for hard coded popular sites
-    print(domain)
-    if domain in name_to_parse_function:
-        title, price = name_to_parse_function[domain](html_content)
-        with open("matches.txt", "a") as f:
-            f.write(f"{link}\n\n")
-            f.write(f"{title, price}\n")
-            f.write('\n')
-        return
+    if domain and domain in name_to_parse_function:
+        return name_to_parse_function[domain](html_content), link
 
     possible_item_tags = [
         {"data-testid": re.compile(r"card", re.I)},
@@ -122,60 +115,60 @@ def scrape_page(query, html_content, link, domain):
     match = process.extractOne(query, titles.keys(), scorer=fuzz.token_set_ratio)
 
     if not titles:
-        return
+        return None
 
     title, score = match
+    return title, titles[title], link
 
-    with open("matches.txt", "a") as f:
-        f.write(f"{name}\n")
-        f.write(f"{link}\n\n")
-        f.write(f"{title, titles[title]}\n")
-        f.write('\n')
 
 
 async def query_page(context, lock, query, link):
-    m = re.match(r'https:\/\/www\.([a-zA-Z\d]+)\.com', link)
+    m = re.match(r'https:\/\/(?:www\.)?([a-zA-Z\d]+\..*)com', link)
+    domain = None
     if m:
         domain = m.group(1)
-    async with lock:
-        if domain in domains:
-            return
-        domains.add(domain)
+        async with lock:
+            if domain in domains:
+                return None
+            domains.add(domain)
 
 
     page = await context.new_page()
+    res = None
     try:
         await page.goto(link, wait_until="domcontentloaded")
         await page.wait_for_function("""
             () => document.body && document.body.innerText.length > 1000
         """, timeout=7500)
         html_content = await page.content()
-        scrape_page(query, html_content, link, domain)
-        #await asyncio.to_thread(scrape_page, query, html_content, link)
+        res = scrape_page(query, html_content, link, domain)
     except Exception as e:
         print(f"Error: {e}: {link}")
     finally:
         await page.close()
+    return res
 
+async def search_results(query):
+    products = []
 
-async def main(query):
     driver = await cdp_driver.start_async()
     endpoint_url = driver.get_endpoint_url()
 
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp(endpoint_url)
-        context = browser.contexts[0]
-        page = context.pages[0]
+        context = await browser.new_context()
+        page = await context.new_page()
         await page.goto(f"https://html.duckduckgo.com/html/?q={query}", wait_until="domcontentloaded")
         html_content = await page.content()
 
         soup = BeautifulSoup(html_content, 'lxml')
         lock = asyncio.Lock()
-    
+        
         links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class', 'result__url'})]
-        await asyncio.gather(*[query_page(await browser.new_context(), lock, query, link) for link in links])
+        results = await asyncio.gather(*[query_page(context, lock, query, link) for link in links])
         await browser.close()
 
+    return results
+
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(main('ps5'))
+    asyncio.run(search_results('ps5'))
