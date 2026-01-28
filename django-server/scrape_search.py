@@ -101,25 +101,26 @@ def scrape_page(query, html_content, link):
         f.write('\n')
 
 
-async def query_page(context, query, link):
+async def query_page(context, lock, query, link):
     m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', link)
     if m:
         domain = m.group(1)
-
-    if domain in domains:
-        return
-    domains.add(domain)
+    async with lock:
+        if domain in domains:
+            return
+        domains.add(domain)
 
     page = await context.new_page()
     try:
-        await page.goto(link, wait_until="domcontentloaded", timeout=5000)
+        await page.goto(link, wait_until="domcontentloaded")
         await page.wait_for_function("""
-            () => document.body.innerText.length > 1000
-        """, timeout=5000)
+            () => document.body && document.body.innerText.length > 1000
+        """, timeout=7500)
         html_content = await page.content()
-        await asyncio.to_thread(scrape_page, query, html_content, link)
+        scrape_page(query, html_content, link)
+        #await asyncio.to_thread(scrape_page, query, html_content, link)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}: {link}")
     finally:
         await page.close()
 
@@ -138,9 +139,11 @@ async def main(query):
         html_content = await page.content()
 
         soup = BeautifulSoup(html_content, 'lxml')
+        lock = asyncio.Lock()
     
         links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class', 'result__url'})]
-        await asyncio.gather(*[query_page(await browser.new_context(), query, link) for link in links])
+        await asyncio.gather(*[query_page(await browser.new_context(), lock, query, link) for link in links])
+        await browser.close()
 
 
 
