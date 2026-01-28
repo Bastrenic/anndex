@@ -42,7 +42,6 @@ def parse_amazon_page(html_content):
     price = parse_price(soup.find('span', attrs={'class': re.compile(r'a-price', re.I)}))
     return title, price
     
-domains = set()
 name_to_parse_function = {'amazon': parse_amazon_page}
 
 def scrape_page(query, html_content, link, domain):
@@ -122,16 +121,15 @@ def scrape_page(query, html_content, link, domain):
 
 
 
-async def query_page(context, lock, query, link):
+async def query_page(context, lock, query, link, domain_list):
     m = re.match(r'https:\/\/(?:www\.)?([a-zA-Z\d]+\..*)com', link)
     domain = None
     if m:
         domain = m.group(1)
         async with lock:
-            if domain in domains:
+            if domain in domain_list:
                 return None
-            domains.add(domain)
-
+            domain_list.add(domain)
 
     page = await context.new_page()
     res = None
@@ -150,6 +148,7 @@ async def query_page(context, lock, query, link):
 
 async def search_results(query):
     products = []
+    domains = set()
 
     driver = await cdp_driver.start_async()
     endpoint_url = driver.get_endpoint_url()
@@ -160,12 +159,13 @@ async def search_results(query):
         page = await context.new_page()
         await page.goto(f"https://html.duckduckgo.com/html/?q={query}", wait_until="domcontentloaded")
         html_content = await page.content()
+        await page.close()
 
         soup = BeautifulSoup(html_content, 'lxml')
         lock = asyncio.Lock()
         
-        links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class', 'result__url'})]
-        results = await asyncio.gather(*[query_page(context, lock, query, link) for link in links])
+        links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class': 'result__url'})]
+        results = await asyncio.gather(*[query_page(context, lock, query, link, domains) for link in links])
         await browser.close()
 
     return results
