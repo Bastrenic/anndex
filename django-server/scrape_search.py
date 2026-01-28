@@ -18,6 +18,32 @@ from fuzzywuzzy import process, fuzz
 # discard results if score is too low
 
 
+def parse_title(title):
+    return title.text.strip()
+
+
+def parse_price(price):
+    price = price.text.strip()
+    res = ''
+    digitPhase = False
+    whitelist = set('0123456789.,')
+
+    for p in price:
+        if p not in whitelist:
+            if not digitPhase:
+                continue
+            else: 
+                break
+
+        if p in whitelist:
+            if not digitPhase:
+                digitPhase = True
+            res += p
+    return res
+
+        
+
+
 def group_results():
     pass
     
@@ -82,7 +108,7 @@ def scrape_page(query, html_content, link):
             title_children = title.find_all(recursive=False)
             if title_children:
                 title = title_children[0]
-            titles[title.text.strip()] = price.text.strip()
+            titles[parse_title(title)] = parse_price(price)
         
         if len(titles) > 20:
             break
