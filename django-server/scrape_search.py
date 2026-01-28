@@ -11,46 +11,52 @@ from sentence_transformers import SentenceTransformer
 from seleniumbase import cdp_driver
 from fuzzywuzzy import process, fuzz
 
-# when parsing amazon - correct price will look like this - ('This item:', '$36.99$36.99') --> consider specialised parsing for ebay and amazon?
-# make it faster
-# write function for parsing title and parsing price
+# consider specialised parsing for ebay and amazon?
 # get the image
 # discard results if score is too low
-
 
 def parse_title(title):
     return title.text.strip()
 
-
 def parse_price(price):
     price = price.text.strip()
     res = ''
-    digitPhase = False
+    digit_phase = False
     whitelist = set('0123456789.,')
 
     for p in price:
         if p not in whitelist:
-            if not digitPhase:
+            if not digit_phase:
                 continue
             else: 
                 break
 
         if p in whitelist:
-            if not digitPhase:
-                digitPhase = True
+            if not digit_phase:
+                digit_phase = True
             res += p
     return res
 
-        
-
-
-def group_results():
-    pass
+def parse_amazon_page(html_content):
+    soup = BeautifulSoup(html_content, 'lxml')
+    title = parse_title(soup.find('span', attrs={'id': 'productTitle'}))
+    price = parse_price(soup.find('span', attrs={'class': re.compile(r'a-price', re.I)}))
+    return title, price
     
-
 domains = set()
+name_to_parse_function = {'amazon': parse_amazon_page}
 
-def scrape_page(query, html_content, link):
+def scrape_page(query, html_content, link, domain):
+    # check for hard coded popular sites
+    print(domain)
+    if domain in name_to_parse_function:
+        title, price = name_to_parse_function[domain](html_content)
+        with open("matches.txt", "a") as f:
+            f.write(f"{link}\n\n")
+            f.write(f"{title, price}\n")
+            f.write('\n')
+        return
+
     possible_item_tags = [
         {"data-testid": re.compile(r"card", re.I)},
         {"data-testid": re.compile(r"tile", re.I)},
@@ -128,13 +134,14 @@ def scrape_page(query, html_content, link):
 
 
 async def query_page(context, lock, query, link):
-    m = re.match(r'https:\/\/([a-zA-Z\d\.]+)', link)
+    m = re.match(r'https:\/\/www\.([a-zA-Z\d]+)\.com', link)
     if m:
         domain = m.group(1)
     async with lock:
         if domain in domains:
             return
         domains.add(domain)
+
 
     page = await context.new_page()
     try:
@@ -143,14 +150,12 @@ async def query_page(context, lock, query, link):
             () => document.body && document.body.innerText.length > 1000
         """, timeout=7500)
         html_content = await page.content()
-        scrape_page(query, html_content, link)
+        scrape_page(query, html_content, link, domain)
         #await asyncio.to_thread(scrape_page, query, html_content, link)
     except Exception as e:
         print(f"Error: {e}: {link}")
     finally:
         await page.close()
-
-
 
 
 async def main(query):
@@ -171,9 +176,6 @@ async def main(query):
         await asyncio.gather(*[query_page(await browser.new_context(), lock, query, link) for link in links])
         await browser.close()
 
-
-
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     loop.run_until_complete(main('ps5'))
-    
