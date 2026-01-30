@@ -51,6 +51,16 @@ class SearchView(APIView):
         res = await search_results(query)
         return Response({"query": res})
 
+# get a users wishlist
+
+# add to a users wishlist
+class WishlistView(APIView):
+    def post(self, request):
+        pass
+
+    def get(self, request):
+        pass
+
 """
 {
 

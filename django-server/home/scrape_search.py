@@ -14,6 +14,10 @@ from fuzzywuzzy import process, fuzz
 # get the image
 # discard results if score is too low
 
+def get_favicon():
+    pass
+
+
 def parse_title(title):
     return title.text.strip()
 
@@ -164,7 +168,7 @@ async def search_results(query):
         soup = BeautifulSoup(html_content, 'lxml')
         lock = asyncio.Lock()
         
-        links = ['https://' + l.text.strip() for l in soup.find_all('a', attrs={'class': 'result__url'})]
+        links = ['https://' + l.text.strip() + '/' for l in soup.find_all('a', attrs={'class': 'result__url'})]
         results = await asyncio.gather(*[query_page(context, lock, query, link, domains) for link in links])
         await browser.close()
 
