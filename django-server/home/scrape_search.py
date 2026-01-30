@@ -121,12 +121,12 @@ def scrape_page(query, html_content, link, domain):
         return None
 
     title, score = match
-    return title, titles[title], link
+    return title, titles[title], link, domain
 
 
 
 async def query_page(context, lock, query, link, domain_list):
-    m = re.match(r'https:\/\/(?:www\.)?([a-zA-Z\d]+\..*)com', link)
+    m = re.match(r'https:\/\/(?:www\.)?([a-zA-Z\d.]+?)\/', link)
     domain = None
     if m:
         domain = m.group(1)
@@ -172,7 +172,7 @@ async def search_results(query):
         results = await asyncio.gather(*[query_page(context, lock, query, link, domains) for link in links])
         await browser.close()
 
-    return results
+    return [i for i in results if i]
 
 if __name__ == "__main__":
     asyncio.run(search_results('ps5'))

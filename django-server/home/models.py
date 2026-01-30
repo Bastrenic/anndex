@@ -26,7 +26,7 @@ class Listing(models.Model):
     store_img_url = models.URLField(blank=True)
     url = models.URLField(unique=True)
     title = models.CharField(max_length=256)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.CharField(max_length=10)
 
     def __str__(self):
         return f"{self.title} at {self.store} costs {self.price}"
