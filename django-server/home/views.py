@@ -1,5 +1,6 @@
 import requests
 import redis
+import logging
 from django.shortcuts import render
 from django.utils import timezone
 from bs4 import BeautifulSoup
@@ -16,6 +17,8 @@ from .scrape_search import search_results
 from fuzzywuzzy import process, fuzz
 from datetime import datetime, timedelta
 from .helpers import normalise_string
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 
 class RegisterView(APIView):
@@ -51,21 +54,16 @@ class LogoutView(APIView):
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 class ProductView(APIView):
+    @method_decorator(cache_page(60 * 60 *  24))
     async def get(self, request):
         query = request.query_params.get('q')
-
-        
         normalised_name = normalise_string(query)
-        prod = None
-        # check if normalised_name exists in cache
-
-
-        # else check if normalised_name exists in db
+        
         prod = await sync_to_async(lambda: Product.objects.filter(normalised_name=normalised_name).first())()
-        if prod and prod.expires_at > timezone.now():
+        if prod and prod.expires_at >= timezone.now():
             serialized_data = await sync_to_async(lambda: ProductSerializer(prod).data)()
-            return Response({'source': 'database', 'data': serialized_data}, status=status.HTTP_200_OK)
-
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        
         listings, image_url = await search_results(query)
         data = {
             'product_name': query,
@@ -73,39 +71,18 @@ class ProductView(APIView):
             'listings': listings,
         }
         serializer = await sync_to_async(lambda: ProductSerializer(data=data))()
-        serializer.is_valid(raise_exception=True)
-        return Response({'source': 'fetch', 'data': data}, status=status.HTTP_200_OK)
-
-        
+        await sync_to_async(serializer.is_valid)(raise_exception=True)
+        return Response(data, status=status.HTTP_200_OK)
 
     async def post(self, request):
-        """
-        serializer = ProductSerializer(data=data)
-        await sync_to_async(serializer.is_valid)(raise_exception=True)
-        product = await sync_to_async(serializer.save)()
-        serialized_data = await sync_to_async(lambda: ProductSerializer(product).data)()
+        prod_data = request.data
+        prod_serializer = await sync_to_async(lambda: ProductSerializer(data=prod_data))()
+        is_valid = await sync_to_async(lambda: prod_serializer.is_valid())()
+        product = await sync_to_async(prod_serializer.save)()
 
-        """
-        """
-        if not request.user.is_authenticated:
-            return Response({'message': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        res = await sync_to_async(lambda: ProductSerializer(product).data)()
+        return Response(res, status=status.HTTP_201_CREATED)
         
-        data = request.data
-        prod_data = {
-            'product_name': data['product_name'],
-            'image_url': data['image_url'],
-        }
-        prod_serializer = ProductSerializer(data=prod_data)
-        prod_serializer.is_valid(raise_exception=True)
-        prod_serializer.save()
-
-        listings = data['listings']
-        for l in listings:
-            list_serializer = ListingSerializer(data=l)
-            list_serializer.is_valid(raise_exception=True)
-            list_serializer.save(product=prod_serializer.instance)
-        return Response({'message': 'saved'}, status=status.HTTP_200_OK)
-        """
 
 
 # get a users wishlist

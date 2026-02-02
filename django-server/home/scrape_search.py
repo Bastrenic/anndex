@@ -98,14 +98,12 @@ def scrape_page(query, html_content, link, domain):
    
     for i in items:
         # how to skip duplicates?
-        for img_attr in possible_img_tags:
-            img = i.find(attrs=img_attr)
-            if img and not img_url:
-                img_url = img.get('src')
-                with open('test.html', 'a') as f:
-                    f.write(f"DOMAIN: {link}\n\n")
-                    f.write(f"{img_url}\n")
-                break
+        if not img_url:
+            for img_attr in possible_img_tags:
+                img = i.find(attrs=img_attr)
+                if img:
+                    img_url = img.get('src')
+                    break
 
 
         for title_attr in possible_title_tags:
