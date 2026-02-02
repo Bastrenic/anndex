@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from .views import RegisterView, LoginView, LogoutView, SearchView, WishlistView
+from .views import RegisterView, LoginView, LogoutView, ProductView, WishlistView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [

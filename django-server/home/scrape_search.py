@@ -11,12 +11,6 @@ from sentence_transformers import SentenceTransformer
 from seleniumbase import cdp_driver
 from fuzzywuzzy import process, fuzz
 
-# get the image
-# discard results if score is too low
-
-def get_favicon():
-    pass
-
 
 def parse_title(title):
     return title.text.strip()
@@ -47,11 +41,17 @@ def parse_amazon_page(html_content):
     return title, price
     
 name_to_parse_function = {'amazon': parse_amazon_page}
+img_url = None
 
 def scrape_page(query, html_content, link, domain):
     # check for hard coded popular sites
     if domain and domain in name_to_parse_function:
         return name_to_parse_function[domain](html_content), link
+
+    possible_img_tags = [
+        {"alt": re.compile(query, re.I)},
+        {"title": re.compile(query, re.I)}
+    ]
 
     possible_item_tags = [
         {"data-testid": re.compile(r"card", re.I)},
@@ -85,6 +85,8 @@ def scrape_page(query, html_content, link, domain):
     matches = []
     items = []
     soup = BeautifulSoup(html_content, 'lxml')
+    global img_url
+
     name = soup.find("title")
     if name:
         name = name.text
@@ -96,6 +98,16 @@ def scrape_page(query, html_content, link, domain):
    
     for i in items:
         # how to skip duplicates?
+        for img_attr in possible_img_tags:
+            img = i.find(attrs=img_attr)
+            if img and not img_url:
+                img_url = img.get('src')
+                with open('test.html', 'a') as f:
+                    f.write(f"DOMAIN: {link}\n\n")
+                    f.write(f"{img_url}\n")
+                break
+
+
         for title_attr in possible_title_tags:
             title = i.find(attrs=title_attr)
             if title:
@@ -121,7 +133,7 @@ def scrape_page(query, html_content, link, domain):
         return None
 
     title, score = match
-    return title, titles[title], link, domain
+    return {'name': title, 'price': titles[title], 'link': link, 'domain': domain}
 
 
 
@@ -172,7 +184,7 @@ async def search_results(query):
         results = await asyncio.gather(*[query_page(context, lock, query, link, domains) for link in links])
         await browser.close()
 
-    return [i for i in results if i]
+    return [i for i in results if i], img_url
 
 if __name__ == "__main__":
     asyncio.run(search_results('ps5'))

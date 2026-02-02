@@ -23,13 +23,13 @@ class Listing(models.Model):
         on_delete=models.CASCADE,
         related_name='listings'
     )
-    store_img_url = models.URLField(blank=True)
-    url = models.URLField(unique=True)
-    title = models.CharField(max_length=256)
+    domain = models.CharField(max_length=256)
+    link = models.URLField(unique=True)
+    name = models.CharField(max_length=256)
     price = models.CharField(max_length=10)
 
     def __str__(self):
-        return f"{self.title} at {self.store} costs {self.price}"
+        return f"{self.name} at {self.domain} costs {self.price}"
 
 class Wishlist(models.Model):
     user = models.ForeignKey(

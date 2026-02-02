@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from .models import User, Wishlist, Product, Listing
 from django.contrib.auth import authenticate
-from datetime import datetime, timedelta
+from datetime import timedelta
+from django.utils import timezone
+from .helpers import normalise_string
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -35,27 +37,13 @@ class LoginSerializer(serializers.Serializer):
             return data
         raise serializers.ValidationError("Incorrect Credentials")
     
-class LinkSerializer(serializers.Serializer):
-    name = serializers.CharField()
-    price = serializers.CharField()
-    link = serializers.CharField()
-    domain = serializers.CharField()
-
-    def to_representation(self, instance):
-        return {
-            'title': instance[0],
-            'price': instance[1],
-            'link': instance[2],
-            'domain': instance[3],
-        }
-
 class ListingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
-        fields = ['id', 'product', 'store_img_url', 'url', 'title', 'price']
+        fields = ['id', 'domain', 'link', 'name', 'price']
 
 class ProductSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField()
+    product_name = serializers.CharField(source='normalised_name')
     listings = ListingSerializer(many=True)
     expires_at = serializers.DateTimeField(read_only=True)
 
@@ -64,13 +52,17 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'product_name', 'image_url', 'listings', 'expires_at']
 
     def create(self, validated_data):
-        normalised_name = "".join(validated_data['product_name'].split())
-        expires_at = datetime.now() + timedelta(hours=24)
-        return Product.objects.create(
+        normalised_name = normalise_string(validated_data['normalised_name'])
+        expires_at = timezone.now() + timedelta(hours=24)
+        prod = Product.objects.create(
             normalised_name=normalised_name,
             image_url=validated_data['image_url'],
             expires_at=expires_at
         )
+
+        for listing in validated_data['listings']:
+            Listing.objects.create(product=prod, **listing)
+        return prod
         
     
 
