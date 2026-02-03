@@ -37,28 +37,11 @@ class Wishlist(models.Model):
         on_delete=models.CASCADE,
         related_name='wishlists'
     )
+    products = models.ManyToManyField(Product)
     title = models.CharField(max_length=256)
-
+    
     def __str__(self):
-        return f"{self.user.username} has a wishlist called {self.title}"
+        return f"{self.user.username} has a wishlist called {self.title} and the items are {self.products}"
 
-
-class WishlistItem(models.Model):
-    wishlist = models.ForeignKey(
-        Wishlist,
-        on_delete=models.CASCADE,
-        related_name='items'
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name='on_wishlist'
-    )
-
-    class Meta:
-        unique_together = ('wishlist', 'product')
-
-    def __str__(self):
-        return f"{self.product.normalised_name} is on {self.wishlist.title}"
     
  

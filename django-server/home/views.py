@@ -13,12 +13,14 @@ from django.db import connection, IntegrityError
 from django.contrib.auth import authenticate
 from rest_framework import serializers, status
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from .scrape_search import search_results
 from fuzzywuzzy import process, fuzz
 from datetime import datetime, timedelta
 from .helpers import normalise_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from rest_framework.permissions import IsAdminUser, AllowAny
 
 
 class RegisterView(APIView):
@@ -54,6 +56,12 @@ class LogoutView(APIView):
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 class ProductView(APIView):
+    def get_permissions(self):
+        self.permission_classes = [AllowAny]
+        if self.request.method == 'POST':
+            self.permission_classes = [IsAdminUser]
+        return super().get_permissions()
+
     @method_decorator(cache_page(60 * 60 *  24))
     async def get(self, request):
         query = request.query_params.get('q')
@@ -84,15 +92,12 @@ class ProductView(APIView):
         return Response(res, status=status.HTTP_201_CREATED)
         
 
-
 # get a users wishlist
 # create a wishlist
 class WishlistView(APIView):
     def post(self, request):
-        print(request)
         if not request.user.is_authenticated:
             return Response({'message': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
-        print(request.user)
         #serializer = WishlistSerializer(data=request.data)
         #data = serializer.is_valid(raise_exception=True)
         #wishlist = serializer.save(user=request.user)
@@ -101,45 +106,3 @@ class WishlistView(APIView):
 
     #def get(self, request):
     #    pass
-
-"""
-{
-
-    "username": "ajl",
-    "email": "ajl@penis.com",
-    "password": "ajl"
-}
-
-[
-    {
-        "title": "PS5 PlayStation 5 Pro Console",
-        "price": "1199",
-        "link": "https://www.jbhifi.com.au/pages/playstation-5/",
-        "domain": "jbhifi.com.au"
-    },
-    {
-        "title": "Disc Drive For PS5 Digital Edition or Pro Console",
-        "price": "124",
-        "link": "https://www.bigw.com.au/gaming/ps5/ps5-consoles/c/64121178100/",
-        "domain": "bigw.com.au"
-    },
-    {
-        "title": "PlayStation 5 Console Slim",
-        "price": "829",
-        "link": "https://www.thegoodguys.com.au/gaming/gaming-hardware/playstation-consoles/",
-        "domain": "thegoodguys.com.au"
-    },
-    {
-        "title": "PS5 PlayStation 5 Pro Console",
-        "price": "1198",
-        "link": "https://www.harveynorman.com.au/games-hub/game-consoles/playstation-consoles/",
-        "domain": "harveynorman.com.au"
-    },
-    {
-        "title": "PlayStation 5 Pro Console",
-        "price": "1,199.95",
-        "link": "https://store.sony.com.au/playstation-5-console/",
-        "domain": "store.sony.com.au"
-    }
-]
-"""
