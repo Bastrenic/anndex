@@ -15,12 +15,11 @@ class ProductViewTest(TestCase):
             is_staff=True,
         )
 
-        User.objects.create_user(
-            username='notadmin',
-            email='notadmin@test.com',
-            password='notadmin',
-            is_staff=False,
-        )
+        self.client.post(reverse('register'), data={
+            'username': 'notadmin',
+            'email': 'notadmin@test.com',
+            'password': 'notadmin'
+        })
 
 
     def test_success(self):

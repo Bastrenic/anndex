@@ -63,6 +63,21 @@ class ProductSerializer(serializers.ModelSerializer):
         for listing in validated_data['listings']:
             Listing.objects.create(product=prod, **listing)
         return prod
+
+class WishlistSerializer(serializers.ModelSerializer):
+    products = ProductSerializer(many=True, read_only=True)
+    product_ids = serializers.PrimaryKeyRelatedField(
+        many = True,
+        queryset = Product.objects.all(),
+        write_only = True,
+        source='products'
+    )
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'title', 'products', 'product_ids']
+
+
+
         
     
 

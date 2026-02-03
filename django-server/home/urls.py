@@ -9,5 +9,8 @@ urlpatterns = [
     path('logout', LogoutView.as_view(), name='logout'),
     path('token/refresh', TokenRefreshView.as_view(), name='token-refresh'),
     path('product', ProductView.as_view(), name='product'),
-    path('wishlist', WishlistView.as_view(), name='wishlist')
+    path('wishlist', WishlistView.as_view(), name='wishlist-post'),
+    path('wishlist/<uuid:wishlist_id>/', WishlistView.as_view(), name='wishlist-detail')
+    #path('<str:username>/wishlists', WishlistView.as_view(), name='wishlist-user')
+    
 ]

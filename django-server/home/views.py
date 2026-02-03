@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup
 from adrf.views import APIView
 from asgiref.sync import sync_to_async
 from rest_framework.response import Response
-from .serializers import RegisterSerializer, LoginSerializer, ProductSerializer, ListingSerializer
-from .models import User, Product
+from .serializers import RegisterSerializer, LoginSerializer, ProductSerializer, ListingSerializer, WishlistSerializer
+from .models import User, Product, Wishlist
 from django.db import connection, IntegrityError
 from django.contrib.auth import authenticate
 from rest_framework import serializers, status
@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from .helpers import normalise_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from rest_framework.permissions import IsAdminUser, AllowAny
+from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 
 
 class RegisterView(APIView):
@@ -85,24 +85,29 @@ class ProductView(APIView):
     async def post(self, request):
         prod_data = request.data
         prod_serializer = await sync_to_async(lambda: ProductSerializer(data=prod_data))()
-        is_valid = await sync_to_async(lambda: prod_serializer.is_valid())()
+        await sync_to_async(lambda: prod_serializer.is_valid())()
         product = await sync_to_async(prod_serializer.save)()
 
         res = await sync_to_async(lambda: ProductSerializer(product).data)()
         return Response(res, status=status.HTTP_201_CREATED)
         
 
-# get a users wishlist
-# create a wishlist
 class WishlistView(APIView):
+    def get_permissions(self):
+        self.permission_classes = [AllowAny]
+        if self.request.method == 'POST':
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
+
     def post(self, request):
-        if not request.user.is_authenticated:
-            return Response({'message': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
-        #serializer = WishlistSerializer(data=request.data)
-        #data = serializer.is_valid(raise_exception=True)
-        #wishlist = serializer.save(user=request.user)
-        return Response({'message': 'hello'}, status=status.HTTP_200_OK)
+        serializer = WishlistSerializer(data=request.data)
+        serializer.is_valid()
+        wishlist = serializer.save(user=request.user)
+        return Response(WishlistSerializer(wishlist).data, status=status.HTTP_201_CREATED)
 
-
-    #def get(self, request):
-    #    pass
+    def get(self, request, wishlist_id=None):
+        wishlist = Wishlist.objects.filter(id=wishlist_id).first()
+        
+        if not wishlist:
+            return Response({"error": "wishlist not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(WishlistSerializer(wishlist).data, status=status.HTTP_200_OK)
