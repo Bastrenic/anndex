@@ -28,7 +28,7 @@ class Listing(models.Model):
     domain = models.CharField(max_length=256)
     link = models.URLField(unique=True)
     name = models.CharField(max_length=256)
-    price = models.CharField(max_length=10)
+    price = models.CharField(max_length=10, blank=True)
 
     def __str__(self):
         return f"{self.name} at {self.domain} costs {self.price}"

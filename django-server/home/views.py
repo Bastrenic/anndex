@@ -63,7 +63,7 @@ class ProductView(APIView):
             self.permission_classes = [IsAdminUser]
         return super().get_permissions()
 
-    @method_decorator(cache_page(60 * 60 *  24))
+    #@method_decorator(cache_page(60 * 60 *  24))
     async def get(self, request):
         query = request.query_params.get('q')
         normalised_name = normalise_string(query)
