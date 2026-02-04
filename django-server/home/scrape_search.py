@@ -105,7 +105,6 @@ def scrape_page(query, html_content, link, domain):
                     img_url = img.get('src')
                     break
 
-
         for title_attr in possible_title_tags:
             title = i.find(attrs=title_attr)
             if title:

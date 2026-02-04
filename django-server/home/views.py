@@ -42,6 +42,7 @@ class LoginView(APIView):
         token = RefreshToken.for_user(user)
         return Response({
             "id": user.id,
+            "username": user.username,
             "tokens": {'refresh':str(token), 'access':(str(token.access_token))}
         }, status=status.HTTP_200_OK)
 
@@ -111,3 +112,14 @@ class WishlistView(APIView):
         if not wishlist:
             return Response({"error": "wishlist not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(WishlistSerializer(wishlist).data, status=status.HTTP_200_OK)
+
+
+class WishlistListView(APIView):
+    def get(self, request, username=None):
+        user = User.objects.filter(username=username).first()
+        
+        if not user:
+            return Response({"error": "user not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        wishlists = user.wishlists.all()
+        return Response(WishlistSerializer(wishlists, many=True).data, status=status.HTTP_200_OK)
